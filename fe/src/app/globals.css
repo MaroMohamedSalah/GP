@@ -1,0 +1,62 @@
+@import "tailwindcss";
+@plugin '../../hero.ts';
+
+@source '../../node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}';
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  /* Colors */
+  --color-primary-10: #f0f4ff;
+  --color-primary-20: #d6e4ff;
+  --color-primary-30: #adc8ff;
+  --color-primary-40: #84a9ff;
+  --color-primary-50: #6690ff;
+  --color-primary-60: #3366ff;
+  --color-primary-70: #254eda;
+  --color-primary-80: #1939b7;
+  --color-primary-90: #102693;
+  --color-primary-100: #091a7a;
+
+  --color-secondary-10: #fff8f1;
+  --color-secondary-20: #ffe9d5;
+  --color-secondary-30: #ffd4aa;
+  --color-secondary-40: #ffbf80;
+  --color-secondary-50: #ffaa55;
+  --color-secondary-60: #ff8c1a;
+  --color-secondary-70: #e67300;
+  --color-secondary-80: #b35900;
+  --color-secondary-90: #804000;
+  --color-secondary-100: #4d2600;
+
+  --color-gray-10: #f9f9f9;
+  --color-gray-20: #f0f0f0;
+  --color-gray-30: #d9d9d9;
+  --color-gray-40: #bfbfbf;
+  --color-gray-50: #a6a6a6;
+  --color-gray-60: #8c8c8c;
+  --color-gray-70: #737373;
+  --color-gray-80: #595959;
+  --color-gray-90: #404040;
+  --color-gray-100: #262626;
+
+  --color-accent-10: #e3fcec;
+  --color-accent-20: #c6f6d5;
+  --color-accent-30: #9ae6b4;
+  --color-accent-40: #68d391;
+  --color-accent-50: #48bb78;
+  --color-accent-60: #38a169;
+  --color-accent-70: #2f855a;
+  --color-accent-80: #276749;
+  --color-accent-90: #22543d;
+  --color-accent-100: #1c4532;
+
+  --color-base-white: #ffffff;
+  --color-base-white-50: rgba(255, 255, 255, 0.5);
+  --color-base-black: #000000;
+}
+
+@utility container {
+  @apply mx-auto;
+  center: true;
+  padding: 1rem;
+}
