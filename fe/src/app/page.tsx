@@ -1,13 +1,12 @@
 "use client";
 
-import { Button } from "@heroui/button";
+import Link from "next/link";
 
 export default function Home() {
   return (
-    <div className="bg-primary-40 h-screen">
+    <div className="bg-gray-70 h-screen">
       <div className="container">
-        <h1 className="text-primary-100">Hello World</h1>
-        <Button color="primary">Button</Button>
+        <Link href="/login">Login</Link>
       </div>
     </div>
   );
