@@ -5,12 +5,18 @@ import { useState } from "react";
 import { LuEye, LuEyeClosed } from "react-icons/lu";
 const CustomInput = ({ label, placeholder, type, size }: InputProps) => {
   const [isVisible, setIsVisible] = useState(false);
+  const getInputType = () => {
+    if (type === "password") {
+      return isVisible ? "text" : "password";
+    }
+    return type;
+  };
 
   return (
     <Input
       label={label}
       placeholder={placeholder}
-      type={type}
+      type={getInputType()}
       size={size}
       classNames={{
         label: "mb-5",
@@ -18,7 +24,7 @@ const CustomInput = ({ label, placeholder, type, size }: InputProps) => {
       }}
       endContent={
         type === "password" && (
-          <button onClick={() => setIsVisible(!isVisible)}>
+          <button type="button" onClick={() => setIsVisible(!isVisible)}>
             {isVisible ? (
               <LuEye size={20} className="cursor-pointer" />
             ) : (
