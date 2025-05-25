@@ -41,7 +41,7 @@ const AuthFormContainer = ({
         </CardHeader>
 
         <CardBody className="gap-10">
-          <form className="flex flex-col gap-8">
+          <form className="flex flex-col gap-8 overflow-hidden">
             {children}
 
             {buttons}
