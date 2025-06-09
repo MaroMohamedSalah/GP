@@ -1,11 +1,10 @@
+"use client";
 import { Card, CardBody, CardHeader } from "@heroui/react";
 import Link from "next/link";
 import { ReactNode } from "react";
 import { LuUser } from "react-icons/lu";
 
 interface AuthFormContainerProps {
-  // onSubmit: FormEventHandler<HTMLFormElement>;
-  onSubmit: () => void;
   formError?: string;
   children: ReactNode;
   title: string;
@@ -14,16 +13,19 @@ interface AuthFormContainerProps {
   altLink?: string;
   altLinkText?: string;
   altLinkDescription?: string;
+  onSubmit?: (e?: React.FormEvent<HTMLFormElement>) => void;
 }
 
 const AuthFormContainer = ({
   children,
+  formError,
   title,
   description,
   buttons,
   altLink,
   altLinkText,
   altLinkDescription,
+  onSubmit,
 }: AuthFormContainerProps) => {
   return (
     <div className="w-full max-w-lg">
@@ -41,10 +43,17 @@ const AuthFormContainer = ({
         </CardHeader>
 
         <CardBody className="gap-10">
-          <form className="flex flex-col gap-8 overflow-hidden">
+          <form
+            className="flex flex-col gap-5 overflow-hidden"
+            onSubmit={onSubmit}
+          >
             {children}
 
             {buttons}
+
+            {formError && (
+              <p className="text-red-500 text-sm text-center">{formError}</p>
+            )}
           </form>
 
           <div className="text-center">

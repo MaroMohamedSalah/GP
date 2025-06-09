@@ -9,7 +9,6 @@ export default function LoginPage() {
     <AuthFormContainer
       title="Welcome Back"
       description="Sign in to your account"
-      onSubmit={() => {}}
       altLink="/register"
       altLinkDescription="Don't have an account? Sign up"
       altLinkText="Sign up"

@@ -8,7 +8,6 @@ const OtpPage = () => {
     <AuthFormContainer
       title="Please verify your email"
       description="We have sent an OTP code to your email"
-      onSubmit={() => {}}
       altLink="/login"
       altLinkDescription="Already have an account? Sign in"
       altLinkText="Sign in"
