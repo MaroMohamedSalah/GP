@@ -1,17 +1,17 @@
 import { API_URL } from "../constants/apiUrl";
 
-export const confirmEmail = async () => {
+const verifyOtp = async (code: string) => {
   const token = localStorage.getItem("token");
 
-  const response = await fetch(`${API_URL}/auth/send-email-verification`, {
+  const res = await fetch(`${API_URL}/auth/verify-email`, {
     method: "POST",
+    body: JSON.stringify({ code }),
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
   });
-
-  const resData = await response.json();
-
-  return resData;
+  return res.json();
 };
+
+export default verifyOtp;

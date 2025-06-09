@@ -27,7 +27,6 @@ const RegisterPage = () => {
   const [error, setError] = useState("");
 
   const password = watch("password");
-  const email = watch("email");
 
   const onSubmit: SubmitHandler<RegisterFormData> = async (data, event) => {
     event?.preventDefault();
@@ -43,7 +42,7 @@ const RegisterPage = () => {
       } else {
         setError("");
         localStorage.setItem("token", signupRes.data.token);
-        await confirmEmail(email);
+        await confirmEmail();
         router.push("/otp");
       }
     } catch {
