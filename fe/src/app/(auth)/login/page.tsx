@@ -1,10 +1,43 @@
 "use client";
+import { login } from "@/app/actions/login";
 import CustomButton from "@/app/components/atoms/button";
 import CustomInput from "@/app/components/atoms/input";
 import AuthFormContainer from "@/app/components/molecules/authFormContainer";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { SubmitHandler, useForm } from "react-hook-form";
+
+type LoginFormData = {
+  email: string;
+  password: string;
+};
 
 export default function LoginPage() {
+  const [error, setError] = useState("");
+  const router = useRouter();
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormData>();
+
+  const onSubmit: SubmitHandler<LoginFormData> = async (data) => {
+    const loginRes = await login(data.email, data.password);
+    if (loginRes.error) {
+      setError(loginRes.error.message);
+    } else if (loginRes.data.user.email.isVerified) {
+      setError("");
+      router.push("/chat");
+    } else {
+      setError("Please verify your email");
+      setTimeout(() => {
+        router.push("/otp");
+      }, 3000);
+    }
+  };
+
   return (
     <AuthFormContainer
       title="Welcome Back"
@@ -12,6 +45,8 @@ export default function LoginPage() {
       altLink="/register"
       altLinkDescription="Don't have an account? Sign up"
       altLinkText="Sign up"
+      onSubmit={handleSubmit(onSubmit)}
+      formError={error}
       buttons={
         <CustomButton type="submit" size="lg">
           Sign In
@@ -23,6 +58,8 @@ export default function LoginPage() {
         placeholder="Enter your email"
         type="email"
         size="lg"
+        errorMessage={errors.email?.message}
+        {...register("email", { required: "Email is required" })}
       />
 
       <CustomInput
@@ -30,6 +67,8 @@ export default function LoginPage() {
         placeholder="Enter your password"
         type="password"
         size="lg"
+        errorMessage={errors.password?.message}
+        {...register("password", { required: "Password is required" })}
       />
 
       <div className="flex items-center justify-between">
