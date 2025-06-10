@@ -1,15 +1,24 @@
 import { Button, ButtonProps } from "@heroui/react";
 
-const CustomButton = ({ children, ...props }: ButtonProps) => {
+const CustomButton = ({ children, variant, ...props }: ButtonProps) => {
+  const baseStyles =
+    "w-full cursor-pointer font-medium py-3 rounded-lg transition-all duration-300 ease-in-out shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed";
+
+  const gradientStyles =
+    variant === "bordered"
+      ? ""
+      : "bg-gradient-to-r from-primary-60 via-primary-65 to-primary-70 hover:from-primary-70 hover:via-primary-75 hover:to-primary-80 active:from-primary-80 active:via-primary-85 active:to-primary-90";
+
   return (
     <Button
       type={props.type}
-      className={`w-full bg-gradient-to-r cursor-pointer from-primary-60 to-primary-70 text-white font-medium py-3 rounded-lg hover:from-primary-70 hover:to-primary-80 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 ${props.className}`}
+      className={`${baseStyles} ${gradientStyles} ${props.className}`}
       size={props.size}
       onClick={props.onClick}
       color={props.color}
       disabled={props.disabled}
       isLoading={props.isLoading}
+      variant={variant}
     >
       {children}
     </Button>

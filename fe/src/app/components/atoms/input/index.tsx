@@ -22,7 +22,7 @@ const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
     };
 
     return (
-      <div>
+      <div className="w-full">
         <Input
           {...rest}
           label={label}
