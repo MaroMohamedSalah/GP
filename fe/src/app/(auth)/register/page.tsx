@@ -25,12 +25,13 @@ const RegisterPage = () => {
   } = useForm<RegisterFormData>();
   const router = useRouter();
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const password = watch("password");
 
   const onSubmit: SubmitHandler<RegisterFormData> = async (data, event) => {
     event?.preventDefault();
-
+    setIsLoading(true);
     try {
       const signupRes = await signup(data);
       if (signupRes.error) {
@@ -47,6 +48,8 @@ const RegisterPage = () => {
       }
     } catch {
       setError("An error occurred during signup");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -60,7 +63,7 @@ const RegisterPage = () => {
       onSubmit={handleSubmit(onSubmit)}
       formError={error}
       buttons={
-        <CustomButton type="submit" size="lg">
+        <CustomButton type="submit" size="lg" isLoading={isLoading}>
           Sign Up
         </CustomButton>
       }

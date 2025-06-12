@@ -15,6 +15,7 @@ type OtpFormData = {
 const OtpPage = () => {
   const [resendTime, setResendTime] = useState<number | null>(null);
   const [resendLoading, setResendLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
 
@@ -33,6 +34,7 @@ const OtpPage = () => {
   };
 
   const onSubmit: SubmitHandler<OtpFormData> = async (data) => {
+    setIsLoading(true);
     const verifyOtpRes = await verifyOtp(data.code);
     if (verifyOtpRes.error) {
       setError(verifyOtpRes.error.message);
@@ -40,6 +42,7 @@ const OtpPage = () => {
       setError("");
       router.push("/login");
     }
+    setIsLoading(false);
   };
 
   useEffect(() => {
@@ -61,7 +64,7 @@ const OtpPage = () => {
       onSubmit={handleSubmit(onSubmit)}
       formError={error}
       buttons={
-        <CustomButton type="submit" size="lg">
+        <CustomButton type="submit" size="lg" isLoading={isLoading}>
           Verify
         </CustomButton>
       }

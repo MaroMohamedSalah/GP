@@ -15,6 +15,7 @@ type LoginFormData = {
 
 export default function LoginPage() {
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const {
@@ -24,6 +25,7 @@ export default function LoginPage() {
   } = useForm<LoginFormData>();
 
   const onSubmit: SubmitHandler<LoginFormData> = async (data) => {
+    setIsLoading(true);
     const loginRes = await login(data.email, data.password);
     if (loginRes.error) {
       setError(loginRes.error.message);
@@ -36,6 +38,7 @@ export default function LoginPage() {
         router.push("/otp");
       }, 3000);
     }
+    setIsLoading(false);
   };
 
   return (
@@ -48,7 +51,7 @@ export default function LoginPage() {
       onSubmit={handleSubmit(onSubmit)}
       formError={error}
       buttons={
-        <CustomButton type="submit" size="lg">
+        <CustomButton type="submit" size="lg" isLoading={isLoading}>
           Sign In
         </CustomButton>
       }
