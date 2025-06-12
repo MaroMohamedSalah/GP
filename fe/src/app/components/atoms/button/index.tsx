@@ -2,7 +2,7 @@ import { Button, ButtonProps } from "@heroui/react";
 
 const CustomButton = ({ children, variant, ...props }: ButtonProps) => {
   const baseStyles =
-    "w-full cursor-pointer font-medium py-3 rounded-lg transition-all duration-300 ease-in-out shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed";
+    "w-full cursor-pointer font-medium py-3 rounded-lg transition-all duration-300 ease-in-out shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed text-white";
 
   const gradientStyles =
     variant === "bordered"
