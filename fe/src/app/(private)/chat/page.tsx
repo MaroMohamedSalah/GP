@@ -327,7 +327,6 @@ export default function ChatPage() {
             <div className="space-y-2">
               {chats.length > 0 ? (
                 chats.map((chat, index) => {
-                  if (!chat.messages && index !== 0) return null;
                   return (
                     <div
                       key={chat._id}
