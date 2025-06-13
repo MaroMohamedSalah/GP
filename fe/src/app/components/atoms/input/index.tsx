@@ -32,6 +32,7 @@ const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
           classNames={{
             label: "mb-5",
             inputWrapper: "rounded-lg bg-gray-20",
+            input: "caret-gray-50",
           }}
           ref={ref}
           endContent={

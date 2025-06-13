@@ -2,7 +2,14 @@
 
 import CustomButton from "@/app/components/atoms/button";
 import CustomInput from "@/app/components/atoms/input";
-import { Avatar, Card, CardBody } from "@heroui/react";
+import {
+  Avatar,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+} from "@heroui/react";
 import type React from "react";
 
 import { useState } from "react";
@@ -27,42 +34,63 @@ interface Message {
 interface Chat {
   id: string;
   title: string;
+  description?: string;
   lastMessage: string;
   timestamp: Date;
+  messages: Message[];
 }
 
 export default function ChatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [currentMessage, setCurrentMessage] = useState("");
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      content: "Hello! How can I help you today?",
-      sender: "assistant",
-      timestamp: new Date(),
-    },
-  ]);
+  const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
+  const [newChatTitle, setNewChatTitle] = useState("");
+  const [newChatDescription, setNewChatDescription] = useState("");
+  const [currentChatId, setCurrentChatId] = useState("1");
 
-  const [chats] = useState<Chat[]>([
+  const [chats, setChats] = useState<Chat[]>([
     {
       id: "1",
       title: "General Chat",
+      description: "General discussion with the AI assistant",
       lastMessage: "Hello! How can I help you today?",
       timestamp: new Date(),
+      messages: [
+        {
+          id: "1",
+          content: "Hello! How can I help you today?",
+          sender: "assistant",
+          timestamp: new Date(),
+        },
+      ],
     },
     {
       id: "2",
-      title: "قضية قتل",
-      lastMessage: "Let's discuss the project requirements",
-      timestamp: new Date(Date.now() - 3600000),
-    },
-    {
-      id: "3",
-      title: "يارب اهدي عمرو غنيم",
-      lastMessage: "The implementation looks good",
-      timestamp: new Date(Date.now() - 7200000),
+      title: "Test Chat",
+      description: "Test discussion with the AI assistant",
+      lastMessage: "Hello! How can I help you today?",
+      timestamp: new Date(),
+      messages: [
+        {
+          id: "1",
+          content: "Hello! How can I help you today?",
+          sender: "assistant",
+          timestamp: new Date(),
+        },
+        {
+          id: "2",
+          content: "Hello!",
+          sender: "user",
+          timestamp: new Date(),
+        },
+      ],
     },
   ]);
+
+  // Get current chat messages
+  const currentChat =
+    chats.find((chat) => chat.id === currentChatId) || chats[0];
+  const messages = currentChat.messages;
 
   const handleSendMessage = () => {
     if (!currentMessage.trim()) return;
@@ -74,7 +102,20 @@ export default function ChatPage() {
       timestamp: new Date(),
     };
 
-    setMessages((prev) => [...prev, newMessage]);
+    // Update the current chat's messages and last message
+    const updatedChats = chats.map((chat) => {
+      if (chat.id === currentChatId) {
+        return {
+          ...chat,
+          messages: [...chat.messages, newMessage],
+          lastMessage: newMessage.content,
+          timestamp: new Date(),
+        };
+      }
+      return chat;
+    });
+
+    setChats(updatedChats);
     setCurrentMessage("");
 
     // Simulate assistant response
@@ -85,7 +126,20 @@ export default function ChatPage() {
         sender: "assistant",
         timestamp: new Date(),
       };
-      setMessages((prev) => [...prev, assistantMessage]);
+
+      setChats((prevChats) =>
+        prevChats.map((chat) => {
+          if (chat.id === currentChatId) {
+            return {
+              ...chat,
+              messages: [...chat.messages, assistantMessage],
+              lastMessage: assistantMessage.content,
+              timestamp: new Date(),
+            };
+          }
+          return chat;
+        })
+      );
     }, 1000);
   };
 
@@ -94,6 +148,36 @@ export default function ChatPage() {
       e.preventDefault();
       handleSendMessage();
     }
+  };
+
+  const handleCreateNewChat = () => {
+    if (!newChatTitle.trim()) return;
+
+    const newChat: Chat = {
+      id: Date.now().toString(),
+      title: newChatTitle,
+      description: newChatDescription,
+      lastMessage: "New conversation started",
+      timestamp: new Date(),
+      messages: [
+        {
+          id: "1",
+          content: "Hello! How can I help you with this new conversation?",
+          sender: "assistant",
+          timestamp: new Date(),
+        },
+      ],
+    };
+
+    setChats([newChat, ...chats]);
+    setCurrentChatId(newChat.id);
+    setNewChatTitle("");
+    setNewChatDescription("");
+    setIsNewChatModalOpen(false);
+  };
+
+  const handleSelectChat = (chatId: string) => {
+    setCurrentChatId(chatId);
   };
 
   return (
@@ -110,12 +194,13 @@ export default function ChatPage() {
             <div className="w-10 h-10 bg-gradient-to-br from-primary-60 to-secondary-60 rounded-lg flex items-center justify-center">
               <LuScale className="w-6 h-6 text-white" />
             </div>
-            <h1 className="text-xl font-bold">Legal fusion Ai</h1>
+            <h1 className="text-xl font-bold">Legal fusion Ai</h1>
           </div>
 
           <CustomButton
             className="w-full bg-gradient-to-r from-primary-60 to-primary-70 text-white"
             startContent={<LuPlus className="w-4 h-4" />}
+            onClick={() => setIsNewChatModalOpen(true)}
           >
             New Chat
           </CustomButton>
@@ -128,25 +213,33 @@ export default function ChatPage() {
           </h3>
           <div className="space-y-2">
             {chats.map((chat) => (
-              <Card
+              <div
                 key={chat.id}
-                className="cursor-pointer hover:bg-gray-20 transition-colors"
+                className={`cursor-pointer transition-colors p-3 ${
+                  currentChatId === chat.id
+                    ? "border-l-4 border-l-primary-60 bg-gray-80"
+                    : "hover:bg-gray-80"
+                }`}
+                onClick={() => handleSelectChat(chat.id)}
               >
-                <CardBody className="p-3">
-                  <h4 className="font-medium text-gray-90 text-sm truncate">
-                    {chat.title}
-                  </h4>
-                  <p className="text-xs text-gray-60 truncate mt-1">
-                    {chat.lastMessage}
+                <h4 className="font-medium text-gray-30 text-sm truncate">
+                  {chat.title}
+                </h4>
+                {chat.description && (
+                  <p className="text-xs text-gray-40 truncate">
+                    {chat.description}
                   </p>
-                  <span className="text-xs text-gray-50 mt-1">
-                    {chat.timestamp.toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
-                </CardBody>
-              </Card>
+                )}
+                <p className="text-xs text-gray-50 truncate mt-1">
+                  {chat.lastMessage}
+                </p>
+                <span className="text-xs text-gray-50 mt-1">
+                  {chat.timestamp.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              </div>
             ))}
           </div>
         </div>
@@ -195,7 +288,7 @@ export default function ChatPage() {
 
           <div className="flex items-center gap-3">
             <div>
-              <h2 className="font-medium">Lawyer Assistant</h2>
+              <h2 className="font-medium">{currentChat.title}</h2>
               <p className="text-xs text-accent-50">Online</p>
             </div>
           </div>
@@ -271,6 +364,58 @@ export default function ChatPage() {
           </div>
         </div>
       </div>
+
+      {/* New Chat Modal */}
+      <Modal
+        isOpen={isNewChatModalOpen}
+        onClose={() => setIsNewChatModalOpen(false)}
+      >
+        <ModalContent className="bg-gray-80 text-gray-30 border-1 border-gray-70">
+          <ModalHeader className="border-b-1 border-gray-70">
+            Create New Chat
+          </ModalHeader>
+          <ModalBody className="py-4">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Chat Title
+                </label>
+                <CustomInput
+                  placeholder="Enter chat title"
+                  value={newChatTitle}
+                  onChange={(e) => setNewChatTitle(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Description (Optional)
+                </label>
+                <CustomInput
+                  placeholder="Enter chat description"
+                  value={newChatDescription}
+                  onChange={(e) => setNewChatDescription(e.target.value)}
+                />
+              </div>
+            </div>
+          </ModalBody>
+          <ModalFooter className="border-t-1 border-gray-70">
+            <CustomButton
+              variant="bordered"
+              className="border-gray-50 text-gray-40"
+              onClick={() => setIsNewChatModalOpen(false)}
+            >
+              Cancel
+            </CustomButton>
+            <CustomButton
+              className="bg-gradient-to-r from-primary-60 to-primary-70 text-white"
+              onClick={handleCreateNewChat}
+              disabled={!newChatTitle.trim()}
+            >
+              Create Chat
+            </CustomButton>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </div>
   );
 }
