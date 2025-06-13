@@ -18,7 +18,7 @@ import {
 import { useRouter } from "next/navigation";
 import type React from "react";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, use } from "react";
 import { FaBrain } from "react-icons/fa";
 import { IoAlertCircleOutline } from "react-icons/io5";
 import {
@@ -42,10 +42,11 @@ interface User {
 }
 
 interface Message {
-  id: string;
+  _id: string;
   content: string;
-  sender: "user" | "assistant";
+  role: "user" | "assistant";
   createdAt: Date;
+  isLoading?: boolean; // Optional for loading state
 }
 
 interface Chat {
@@ -73,6 +74,7 @@ export default function ChatPage() {
   const [error, setError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
 
   const router = useRouter();
 
@@ -90,22 +92,78 @@ export default function ChatPage() {
   // Get current chat messages
   const currentChat =
     chats.find((chat) => chat._id === currentChatId) || chats[0];
-  const messages = currentChat?.messages || [];
+  // const messages = currentChat?.messages || [];
 
   // Scroll to bottom of messages
+
+  useEffect(() => {
+    if (currentChatId) {
+      const chat = chats.find((chat) => chat._id === currentChatId);
+      if (chat) {
+        setMessages(chat.messages);
+      } else {
+        setMessages([]);
+      }
+    } else {
+      setMessages([]);
+    }
+  }, [currentChatId]);
+
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
 
+  const appendMessageTokens = (messageId: string, tokens: string) => {
+    setChats((prevChats) =>
+      prevChats.map((chat) => {
+        if (chat._id === currentChatId) {
+          return {
+            ...chat,
+            messages: chat.messages.map((msg) =>
+              msg._id === messageId ? { ...msg, content: msg.content + tokens } : msg
+            ),
+          };
+        }
+        return chat;
+      })
+    );
+    setMessages((prevMessages) =>
+      prevMessages.map((msg) =>
+        msg._id === messageId ? { ...msg, content: msg.content + tokens } : msg
+      )
+    );
+  }
+
+  const deleteMessageLoadingState = (messageId: string) => {
+    setChats((prevChats) =>
+      prevChats.map((chat) => {
+        if (chat._id === currentChatId) {
+          return {
+            ...chat,
+            messages: chat.messages.map((msg) =>
+              msg._id === messageId ? { ...msg, isLoading: false } : msg
+            ),
+          };
+        }
+        return chat;
+      })
+    );
+    setMessages((prevMessages) =>
+      prevMessages.map((msg) =>
+        msg._id === messageId ? { ...msg, isLoading: false } : msg
+      )
+    );
+  }
+
   const handleSendMessage = async () => {
     if (!currentMessage.trim() || !currentChat) return;
 
     const newMessage: Message = {
-      id: Date.now().toString(),
+      _id: Date.now().toString(),
       content: currentMessage,
-      sender: "user",
+      role: "user",
       createdAt: new Date(),
     };
 
@@ -123,6 +181,7 @@ export default function ChatPage() {
     });
 
     setChats(updatedChats);
+    setMessages((prevMessages) => [...prevMessages, newMessage]);
     setCurrentMessage("");
     setIsSendingMessage(true);
 
@@ -130,27 +189,42 @@ export default function ChatPage() {
       // Here you would add the API call to send the message
       // For now, we'll simulate a response
       setTimeout(() => {
-        const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          content: "I understand your message. How can I assist you further?",
-          sender: "assistant",
-          createdAt: new Date(),
-        };
+          const assistantMessage: Message = {
+            _id: (Date.now() + 1000*Math.random()).toString(),
+            content: "",
+            role: "assistant",
+            createdAt: new Date(),
+            isLoading: true,
+          };
 
-        setChats((prevChats) =>
-          prevChats.map((chat) => {
-            if (chat._id === currentChatId) {
-              return {
-                ...chat,
-                messages: [...(chat?.messages || []), assistantMessage],
-                lastMessage: assistantMessage.content,
-                timestamp: new Date(),
-              };
+          setChats((prevChats) =>
+            prevChats.map((chat) => {
+              if (chat._id === currentChatId) {
+                return {
+                  ...chat,
+                  messages: [...(chat?.messages || []), assistantMessage],
+                  lastMessage: assistantMessage.content,
+                  timestamp: new Date(),
+                };
+              }
+              return chat;
+            })
+          );
+          setMessages((prevMessages) => [...prevMessages, assistantMessage]);
+          setIsSendingMessage(false);
+
+
+          const words = ["hi", "i", "am", "an", "ai", "assistant"];
+          let i = 0;
+          const interval = setInterval(() => {
+            if (i < words.length) {
+              appendMessageTokens(assistantMessage._id, words[i] + " ");
+              i++;
+            } else {
+              clearInterval(interval);
+              deleteMessageLoadingState(assistantMessage._id);
             }
-            return chat;
-          })
-        );
-        setIsSendingMessage(false);
+          }, 500);
       }, 1000);
     } catch {
       setError("Failed to send message. Please try again.");
@@ -466,22 +540,22 @@ export default function ChatPage() {
               <>
                 {messages.map((message) => (
                   <div
-                    key={message.id}
+                    key={message._id}
                     className={`flex ${
-                      message.sender === "user"
+                      message.role === "user"
                         ? "justify-end"
                         : "justify-start"
-                    }`}
+                    } ${message.isLoading ? "opacity-50" : ""}`}
                   >
                     <div
                       className={`flex gap-3 max-w-[70%] ${
-                        message.sender === "user" ? "flex-row-reverse" : ""
+                        message.role === "user" ? "flex-row-reverse" : ""
                       }`}
                     >
                       <Avatar
                         className="w-8 h-8 flex-shrink-0"
                         fallback={
-                          message.sender === "user" ? (
+                          message.role === "user" ? (
                             <LuUser className="w-4 h-4" />
                           ) : (
                             <FaBrain className="w-4 h-4" />
@@ -490,7 +564,7 @@ export default function ChatPage() {
                       />
                       <div
                         className={`${
-                          message.sender === "user"
+                          message.role === "user"
                             ? "bg-gradient-to-r from-primary-60 to-primary-70 text-white"
                             : "bg-gray-20 text-gray-90"
                         } rounded-2xl px-4 py-3`}
@@ -500,7 +574,7 @@ export default function ChatPage() {
                         </p>
                         <span
                           className={`text-xs mt-1 block ${
-                            message.sender === "user"
+                            message.role === "user"
                               ? "text-primary-10"
                               : "text-gray-60"
                           }`}
