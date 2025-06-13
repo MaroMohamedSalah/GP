@@ -2,6 +2,7 @@
 
 import CustomButton from "@/app/components/atoms/button";
 import CustomInput from "@/app/components/atoms/input";
+import ModalSelection from "@/app/components/molecules/AIModelSelection";
 import {
   Avatar,
   Modal,
@@ -14,15 +15,7 @@ import type React from "react";
 
 import { useState } from "react";
 import { FaBrain } from "react-icons/fa";
-import {
-  LuSend,
-  LuPlus,
-  LuLogOut,
-  LuMenu,
-  LuX,
-  LuScale,
-  LuUser,
-} from "react-icons/lu";
+import { LuSend, LuPlus, LuLogOut, LuScale, LuUser } from "react-icons/lu";
 
 interface Message {
   id: string;
@@ -38,59 +31,22 @@ interface Chat {
   lastMessage: string;
   timestamp: Date;
   messages: Message[];
+  aiModel: string;
 }
 
 export default function ChatPage() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [currentMessage, setCurrentMessage] = useState("");
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
   const [newChatTitle, setNewChatTitle] = useState("");
   const [newChatDescription, setNewChatDescription] = useState("");
-  const [currentChatId, setCurrentChatId] = useState("1");
+  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
 
-  const [chats, setChats] = useState<Chat[]>([
-    {
-      id: "1",
-      title: "General Chat",
-      description: "General discussion with the AI assistant",
-      lastMessage: "Hello! How can I help you today?",
-      timestamp: new Date(),
-      messages: [
-        {
-          id: "1",
-          content: "Hello! How can I help you today?",
-          sender: "assistant",
-          timestamp: new Date(),
-        },
-      ],
-    },
-    {
-      id: "2",
-      title: "Test Chat",
-      description: "Test discussion with the AI assistant",
-      lastMessage: "Hello! How can I help you today?",
-      timestamp: new Date(),
-      messages: [
-        {
-          id: "1",
-          content: "Hello! How can I help you today?",
-          sender: "assistant",
-          timestamp: new Date(),
-        },
-        {
-          id: "2",
-          content: "Hello!",
-          sender: "user",
-          timestamp: new Date(),
-        },
-      ],
-    },
-  ]);
+  const [chats, setChats] = useState<Chat[]>([]);
 
   // Get current chat messages
   const currentChat =
     chats.find((chat) => chat.id === currentChatId) || chats[0];
-  const messages = currentChat.messages;
+  const messages = currentChat?.messages || [];
 
   const handleSendMessage = () => {
     if (!currentMessage.trim()) return;
@@ -159,6 +115,7 @@ export default function ChatPage() {
       description: newChatDescription,
       lastMessage: "New conversation started",
       timestamp: new Date(),
+      aiModel: localStorage.getItem("aiModel") ?? "LegalQwen3-7B",
       messages: [
         {
           id: "1",
@@ -184,9 +141,7 @@ export default function ChatPage() {
     <div className="h-screen flex bg-gray-10">
       {/* Sidebar */}
       <div
-        className={`${
-          sidebarOpen ? "w-80" : "w-0"
-        } transition-all duration-300 overflow-hidden bg-gray-90 border-r-1 border-gray-100 flex flex-col`}
+        className={`w-80 transition-all duration-300 overflow-hidden bg-gray-90 border-r-1 border-gray-100 flex flex-col`}
       >
         {/* Logo and Header */}
         <div className="p-6 border-b-1 border-gray-50 text-white">
@@ -212,35 +167,36 @@ export default function ChatPage() {
             Recent Chats
           </h3>
           <div className="space-y-2">
-            {chats.map((chat) => (
-              <div
-                key={chat.id}
-                className={`cursor-pointer transition-colors p-3 ${
-                  currentChatId === chat.id
-                    ? "border-l-4 border-l-primary-60 bg-gray-80"
-                    : "hover:bg-gray-80"
-                }`}
-                onClick={() => handleSelectChat(chat.id)}
-              >
-                <h4 className="font-medium text-gray-30 text-sm truncate">
-                  {chat.title}
-                </h4>
-                {chat.description && (
-                  <p className="text-xs text-gray-40 truncate">
-                    {chat.description}
+            {chats &&
+              chats.map((chat) => (
+                <div
+                  key={chat.id}
+                  className={`cursor-pointer transition-colors p-3 ${
+                    currentChatId === chat.id
+                      ? "border-l-4 border-l-primary-60 bg-gray-80"
+                      : "hover:bg-gray-80"
+                  }`}
+                  onClick={() => handleSelectChat(chat.id)}
+                >
+                  <h4 className="font-medium text-gray-30 text-sm truncate">
+                    {chat.title} - {chat.aiModel}
+                  </h4>
+                  {chat.description && (
+                    <p className="text-xs text-gray-40 truncate">
+                      {chat.description}
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-50 truncate mt-1">
+                    {chat.lastMessage}
                   </p>
-                )}
-                <p className="text-xs text-gray-50 truncate mt-1">
-                  {chat.lastMessage}
-                </p>
-                <span className="text-xs text-gray-50 mt-1">
-                  {chat.timestamp.toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </span>
-              </div>
-            ))}
+                  <span className="text-xs text-gray-50 mt-1">
+                    {chat.timestamp.toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </div>
+              ))}
           </div>
         </div>
 
@@ -274,23 +230,24 @@ export default function ChatPage() {
       <div className="flex-1 flex flex-col text-white">
         {/* Chat Header */}
         <div className="bg-gray-70 border-b-1 border-gray-50 p-4 flex items-center gap-3">
-          <CustomButton
-            variant="light"
-            className="lg:hidden"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-          >
-            {sidebarOpen ? (
-              <LuX className="w-5 h-5" />
-            ) : (
-              <LuMenu className="w-5 h-5" />
-            )}
-          </CustomButton>
-
           <div className="flex items-center gap-3">
-            <div>
-              <h2 className="font-medium">{currentChat.title}</h2>
-              <p className="text-xs text-accent-50">Online</p>
-            </div>
+            {currentChat ? (
+              <div>
+                <h2 className="font-medium">
+                  {currentChat?.title} - {currentChat?.aiModel}
+                </h2>
+                <p className="text-xs text-accent-50">Online</p>
+              </div>
+            ) : (
+              <div>
+                <h2
+                  className="font-medium"
+                  onClick={() => setIsNewChatModalOpen(true)}
+                >
+                  Select a chat
+                </h2>
+              </div>
+            )}
           </div>
         </div>
 
@@ -376,6 +333,9 @@ export default function ChatPage() {
           </ModalHeader>
           <ModalBody className="py-4">
             <div className="space-y-4">
+              <div>
+                <ModalSelection />
+              </div>
               <div>
                 <label className="block text-sm font-medium mb-1">
                   Chat Title
