@@ -112,7 +112,7 @@ export default function ChatPage() {
       if (chat._id === currentChatId) {
         return {
           ...chat,
-          messages: [...chat.messages, newMessage],
+          messages: [...(chat?.messages || []), newMessage],
           lastMessage: newMessage.content,
           timestamp: new Date(),
         };
@@ -140,7 +140,7 @@ export default function ChatPage() {
             if (chat._id === currentChatId) {
               return {
                 ...chat,
-                messages: [...chat.messages, assistantMessage],
+                messages: [...(chat?.messages || []), assistantMessage],
                 lastMessage: assistantMessage.content,
                 timestamp: new Date(),
               };
