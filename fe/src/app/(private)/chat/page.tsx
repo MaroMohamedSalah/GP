@@ -180,7 +180,7 @@ export default function ChatPage() {
       // In a real app, you would send this to the API
       const enhancedChat = {
         ...newChat.data,
-        name: newChatTitle,
+        name: newChatTitle + " - " + agent,
         description: newChatDescription,
       };
 
