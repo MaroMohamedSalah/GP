@@ -31,6 +31,7 @@ export default function LoginPage() {
       setError(loginRes.error.message);
     } else if (loginRes.data.user.email.isVerified) {
       setError("");
+      localStorage.setItem("userData", loginRes.data.user);
       router.push("/chat");
     } else {
       setError("Please verify your email");

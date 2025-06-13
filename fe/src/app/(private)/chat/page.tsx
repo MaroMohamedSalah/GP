@@ -17,6 +17,15 @@ import { useState } from "react";
 import { FaBrain } from "react-icons/fa";
 import { LuSend, LuPlus, LuLogOut, LuScale, LuUser } from "react-icons/lu";
 
+interface User {
+  _id: string;
+  username: string;
+  email: {
+    content: string;
+    isVerified: boolean;
+  };
+}
+
 interface Message {
   id: string;
   content: string;
@@ -40,8 +49,10 @@ export default function ChatPage() {
   const [newChatTitle, setNewChatTitle] = useState("");
   const [newChatDescription, setNewChatDescription] = useState("");
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
-
   const [chats, setChats] = useState<Chat[]>([]);
+  const userData: User | null = JSON.parse(
+    localStorage.getItem("userData") || "null"
+  );
 
   // Get current chat messages
   const currentChat =
@@ -207,10 +218,14 @@ export default function ChatPage() {
               className="w-8 h-8"
               fallback={<LuUser className="w-4 h-4" />}
             />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-30">Marwan Mohamed</p>
-              <p className="text-xs text-gray-50">marwan@example.com</p>
-            </div>
+            {userData && (
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-30">
+                  {userData.username}
+                </p>
+                <p className="text-xs text-gray-50">{userData.email.content}</p>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-2">
