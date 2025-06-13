@@ -45,7 +45,7 @@ interface Message {
   id: string;
   content: string;
   sender: "user" | "assistant";
-  timestamp: Date;
+  createdAt: Date;
 }
 
 interface Chat {
@@ -53,9 +53,11 @@ interface Chat {
   name: string;
   description?: string;
   lastMessage: string;
-  timestamp: Date;
+  createdAt: Date;
   messages: Message[];
-  aiModel: string;
+  agent: {
+    name: string;
+  }
 }
 
 export default function ChatPage() {
@@ -104,7 +106,7 @@ export default function ChatPage() {
       id: Date.now().toString(),
       content: currentMessage,
       sender: "user",
-      timestamp: new Date(),
+      createdAt: new Date(),
     };
 
     // Update the current chat's messages and last message
@@ -132,7 +134,7 @@ export default function ChatPage() {
           id: (Date.now() + 1).toString(),
           content: "I understand your message. How can I assist you further?",
           sender: "assistant",
-          timestamp: new Date(),
+          createdAt: new Date(),
         };
 
         setChats((prevChats) =>
@@ -342,12 +344,12 @@ export default function ChatPage() {
                       </h4>
                       <div className="flex items-center gap-1 text-xs text-accent-50 mt-1">
                         <span className="bg-gray-70 px-2 py-0.5 rounded-full">
-                          {chat.aiModel}
+                          {chat?.agent?.name}
                         </span>
                       </div>
                       <span className="text-xs text-gray-50 mt-1">
-                        {chat.timestamp
-                          ? formatDate(new Date(chat.timestamp))
+                        {chat.createdAt
+                          ? formatDate(new Date(chat.createdAt))
                           : "No messages yet"}
                       </span>
                     </div>
@@ -440,7 +442,7 @@ export default function ChatPage() {
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-accent-50">Online</span>
                   <span className="text-xs bg-gray-60 px-2 py-0.5 rounded-full">
-                    {currentChat?.aiModel}
+                    {currentChat?.agent?.name}
                   </span>
                 </div>
               </div>
@@ -503,7 +505,7 @@ export default function ChatPage() {
                               : "text-gray-60"
                           }`}
                         >
-                          {formatDate(new Date(message.timestamp))}
+                          {formatDate(new Date(message.createdAt))}
                         </span>
                       </div>
                     </div>
