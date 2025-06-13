@@ -1,5 +1,6 @@
 "use client";
 
+import { getAllChats } from "@/app/actions/getAllChats";
 import CustomButton from "@/app/components/atoms/button";
 import CustomInput from "@/app/components/atoms/input";
 import ModalSelection from "@/app/components/molecules/AIModelSelection";
@@ -13,7 +14,7 @@ import {
 } from "@heroui/react";
 import type React from "react";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FaBrain } from "react-icons/fa";
 import { LuSend, LuPlus, LuLogOut, LuScale, LuUser } from "react-icons/lu";
 
@@ -35,7 +36,7 @@ interface Message {
 
 interface Chat {
   id: string;
-  title: string;
+  name: string;
   description?: string;
   lastMessage: string;
   timestamp: Date;
@@ -122,7 +123,7 @@ export default function ChatPage() {
 
     const newChat: Chat = {
       id: Date.now().toString(),
-      title: newChatTitle,
+      name: newChatTitle,
       description: newChatDescription,
       lastMessage: "New conversation started",
       timestamp: new Date(),
@@ -147,6 +148,18 @@ export default function ChatPage() {
   const handleSelectChat = (chatId: string) => {
     setCurrentChatId(chatId);
   };
+
+  useEffect(() => {
+    const fetchChats = async () => {
+      const chats = await getAllChats();
+      setChats(chats.data);
+    };
+    fetchChats();
+  }, []);
+
+  useEffect(() => {
+    console.log(chats);
+  }, [chats]);
 
   return (
     <div className="h-screen flex bg-gray-10">
@@ -178,7 +191,7 @@ export default function ChatPage() {
             Recent Chats
           </h3>
           <div className="space-y-2">
-            {chats &&
+            {chats.length > 0 ? (
               chats.map((chat) => (
                 <div
                   key={chat.id}
@@ -190,7 +203,7 @@ export default function ChatPage() {
                   onClick={() => handleSelectChat(chat.id)}
                 >
                   <h4 className="font-medium text-gray-30 text-sm truncate">
-                    {chat.title} - {chat.aiModel}
+                    {chat.name} - {chat.aiModel}
                   </h4>
                   {chat.description && (
                     <p className="text-xs text-gray-40 truncate">
@@ -207,7 +220,12 @@ export default function ChatPage() {
                     })}
                   </span>
                 </div>
-              ))}
+              ))
+            ) : (
+              <div className="text-center text-gray-50">
+                <p>No chats found</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -249,7 +267,7 @@ export default function ChatPage() {
             {currentChat ? (
               <div>
                 <h2 className="font-medium">
-                  {currentChat?.title} - {currentChat?.aiModel}
+                  {currentChat?.name} - {currentChat?.aiModel}
                 </h2>
                 <p className="text-xs text-accent-50">Online</p>
               </div>
