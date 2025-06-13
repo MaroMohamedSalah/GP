@@ -1,6 +1,7 @@
 "use client";
 
 import { getAllChats } from "@/app/actions/getAllChats";
+import { startNewChat } from "@/app/actions/startNewChat";
 import CustomButton from "@/app/components/atoms/button";
 import CustomInput from "@/app/components/atoms/input";
 import ModalSelection from "@/app/components/molecules/AIModelSelection";
@@ -11,12 +12,25 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
+  Spinner,
+  Tooltip,
 } from "@heroui/react";
+import { useRouter } from "next/navigation";
 import type React from "react";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { FaBrain } from "react-icons/fa";
-import { LuSend, LuPlus, LuLogOut, LuScale, LuUser } from "react-icons/lu";
+import { IoAlertCircleOutline } from "react-icons/io5";
+import {
+  LuSend,
+  LuPlus,
+  LuLogOut,
+  LuScale,
+  LuUser,
+  LuMenu,
+  LuX,
+  LuRefreshCw,
+} from "react-icons/lu";
 
 interface User {
   _id: string;
@@ -35,7 +49,7 @@ interface Message {
 }
 
 interface Chat {
-  id: string;
+  _id: string;
   name: string;
   description?: string;
   lastMessage: string;
@@ -51,17 +65,40 @@ export default function ChatPage() {
   const [newChatDescription, setNewChatDescription] = useState("");
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [chats, setChats] = useState<Chat[]>([]);
-  const userData: User | null = JSON.parse(
-    localStorage.getItem("userData") || "null"
-  );
+  const [isLoading, setIsLoading] = useState(true);
+  const [isCreatingChat, setIsCreatingChat] = useState(false);
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const router = useRouter();
+
+  const userData: User | null =
+    typeof window !== "undefined"
+      ? (JSON.parse(localStorage.getItem("userData") || "null") as User | null)
+      : null;
+  const agent =
+    typeof window !== "undefined"
+      ? localStorage.getItem("aiModel") ?? "LegalQwen3-7B"
+      : "LegalQwen3-7B";
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   // Get current chat messages
   const currentChat =
-    chats.find((chat) => chat.id === currentChatId) || chats[0];
+    chats.find((chat) => chat._id === currentChatId) || chats[0];
   const messages = currentChat?.messages || [];
 
-  const handleSendMessage = () => {
-    if (!currentMessage.trim()) return;
+  // Scroll to bottom of messages
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
+
+  const handleSendMessage = async () => {
+    if (!currentMessage.trim() || !currentChat) return;
 
     const newMessage: Message = {
       id: Date.now().toString(),
@@ -72,7 +109,7 @@ export default function ChatPage() {
 
     // Update the current chat's messages and last message
     const updatedChats = chats.map((chat) => {
-      if (chat.id === currentChatId) {
+      if (chat._id === currentChatId) {
         return {
           ...chat,
           messages: [...chat.messages, newMessage],
@@ -85,30 +122,38 @@ export default function ChatPage() {
 
     setChats(updatedChats);
     setCurrentMessage("");
+    setIsSendingMessage(true);
 
-    // Simulate assistant response
-    setTimeout(() => {
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: "I understand your message. How can I assist you further?",
-        sender: "assistant",
-        timestamp: new Date(),
-      };
+    try {
+      // Here you would add the API call to send the message
+      // For now, we'll simulate a response
+      setTimeout(() => {
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          content: "I understand your message. How can I assist you further?",
+          sender: "assistant",
+          timestamp: new Date(),
+        };
 
-      setChats((prevChats) =>
-        prevChats.map((chat) => {
-          if (chat.id === currentChatId) {
-            return {
-              ...chat,
-              messages: [...chat.messages, assistantMessage],
-              lastMessage: assistantMessage.content,
-              timestamp: new Date(),
-            };
-          }
-          return chat;
-        })
-      );
-    }, 1000);
+        setChats((prevChats) =>
+          prevChats.map((chat) => {
+            if (chat._id === currentChatId) {
+              return {
+                ...chat,
+                messages: [...chat.messages, assistantMessage],
+                lastMessage: assistantMessage.content,
+                timestamp: new Date(),
+              };
+            }
+            return chat;
+          })
+        );
+        setIsSendingMessage(false);
+      }, 1000);
+    } catch {
+      setError("Failed to send message. Please try again.");
+      setIsSendingMessage(false);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -118,54 +163,114 @@ export default function ChatPage() {
     }
   };
 
-  const handleCreateNewChat = () => {
+  const handleCreateNewChat = async () => {
     if (!newChatTitle.trim()) return;
 
-    const newChat: Chat = {
-      id: Date.now().toString(),
-      name: newChatTitle,
-      description: newChatDescription,
-      lastMessage: "New conversation started",
-      timestamp: new Date(),
-      aiModel: localStorage.getItem("aiModel") ?? "LegalQwen3-7B",
-      messages: [
-        {
-          id: "1",
-          content: "Hello! How can I help you with this new conversation?",
-          sender: "assistant",
-          timestamp: new Date(),
-        },
-      ],
-    };
+    setIsCreatingChat(true);
+    setError(null);
 
-    setChats([newChat, ...chats]);
-    setCurrentChatId(newChat.id);
-    setNewChatTitle("");
-    setNewChatDescription("");
-    setIsNewChatModalOpen(false);
+    try {
+      const newChat = await startNewChat(agent);
+
+      if (newChat.error) {
+        throw new Error(newChat.error);
+      }
+
+      // Update the chat with the title and description
+      // In a real app, you would send this to the API
+      const enhancedChat = {
+        ...newChat.data,
+        name: newChatTitle,
+        description: newChatDescription,
+      };
+
+      setChats([enhancedChat, ...chats]);
+      setCurrentChatId(enhancedChat._id);
+      setNewChatTitle("");
+      setNewChatDescription("");
+      setIsNewChatModalOpen(false);
+    } catch {
+      setError("Failed to create new chat");
+    } finally {
+      setIsCreatingChat(false);
+    }
   };
 
   const handleSelectChat = (chatId: string) => {
     setCurrentChatId(chatId);
+    // On mobile, close the sidebar after selecting a chat
+    if (window.innerWidth < 1024) {
+      setSidebarOpen(false);
+    }
+  };
+
+  const refreshChats = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await getAllChats();
+      if (result.error) {
+        throw new Error(result.error);
+      }
+      setChats(result.data);
+
+      // Select the first chat if none is selected
+      if (result.data.length > 0 && !currentChatId) {
+        setCurrentChatId(result.data[0].id);
+      }
+    } catch {
+      setError("Failed to load chats");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
-    const fetchChats = async () => {
-      const chats = await getAllChats();
-      setChats(chats.data);
-    };
-    fetchChats();
+    refreshChats();
   }, []);
 
   useEffect(() => {
-    console.log(chats);
-  }, [chats]);
+    if (!token) {
+      router.push("/login");
+    }
+  }, [token, router]);
+
+  // Format date for display
+  const formatDate = (date: Date) => {
+    const now = new Date();
+    const messageDate = new Date(date);
+
+    // If the message is from today, show only time
+    if (messageDate.toDateString() === now.toDateString()) {
+      return messageDate.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+
+    // If the message is from this year, show month and day
+    if (messageDate.getFullYear() === now.getFullYear()) {
+      return messageDate.toLocaleDateString([], {
+        month: "short",
+        day: "numeric",
+      });
+    }
+
+    // Otherwise show full date
+    return messageDate.toLocaleDateString([], {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
 
   return (
     <div className="h-screen flex bg-gray-10">
       {/* Sidebar */}
       <div
-        className={`w-80 transition-all duration-300 overflow-hidden bg-gray-90 border-r-1 border-gray-100 flex flex-col`}
+        className={`${
+          sidebarOpen ? "w-80" : "w-0 md:w-0"
+        } transition-all duration-300 overflow-hidden bg-gray-90 border-r-1 border-gray-100 flex flex-col fixed md:relative h-full z-10`}
       >
         {/* Logo and Header */}
         <div className="p-6 border-b-1 border-gray-50 text-white">
@@ -187,46 +292,93 @@ export default function ChatPage() {
 
         {/* Chat History */}
         <div className="flex-1 overflow-y-auto p-4">
-          <h3 className="text-sm font-medium text-gray-30 mb-3">
-            Recent Chats
-          </h3>
-          <div className="space-y-2">
-            {chats.length > 0 ? (
-              chats.map((chat) => (
-                <div
-                  key={chat.id}
-                  className={`cursor-pointer transition-colors p-3 ${
-                    currentChatId === chat.id
-                      ? "border-l-4 border-l-primary-60 bg-gray-80"
-                      : "hover:bg-gray-80"
-                  }`}
-                  onClick={() => handleSelectChat(chat.id)}
-                >
-                  <h4 className="font-medium text-gray-30 text-sm truncate">
-                    {chat.name} - {chat.aiModel}
-                  </h4>
-                  {chat.description && (
-                    <p className="text-xs text-gray-40 truncate">
-                      {chat.description}
-                    </p>
-                  )}
-                  <p className="text-xs text-gray-50 truncate mt-1">
-                    {chat.lastMessage}
-                  </p>
-                  <span className="text-xs text-gray-50 mt-1">
-                    {chat.timestamp.toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
-                </div>
-              ))
-            ) : (
-              <div className="text-center text-gray-50">
-                <p>No chats found</p>
-              </div>
-            )}
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-sm font-medium text-gray-30">Recent Chats</h3>
+            <Tooltip content="Refresh chats">
+              <button
+                onClick={refreshChats}
+                className="text-gray-40 hover:text-gray-30 transition-colors"
+                disabled={isLoading}
+              >
+                <LuRefreshCw
+                  className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`}
+                />
+              </button>
+            </Tooltip>
           </div>
+
+          {isLoading ? (
+            <div className="flex justify-center items-center h-32">
+              <Spinner color="primary" />
+            </div>
+          ) : error ? (
+            <div className="text-center text-red-400 p-4 bg-gray-80 rounded-md">
+              <IoAlertCircleOutline className="w-6 h-6 mx-auto mb-2" />
+              <p className="text-sm">{error}</p>
+              <CustomButton
+                className="mt-2 text-xs"
+                variant="bordered"
+                onClick={refreshChats}
+              >
+                Try Again
+              </CustomButton>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {chats.length > 0 ? (
+                chats.map((chat, index) => {
+                  if (!chat.messages && index !== 0) return null;
+                  return (
+                    <div
+                      key={chat._id}
+                      className={`cursor-pointer transition-colors p-3 rounded-md ${
+                        currentChatId === chat._id
+                          ? "border-l-4 border-l-primary-60 bg-gray-80"
+                          : "hover:bg-gray-80"
+                      }`}
+                      onClick={() => handleSelectChat(chat._id)}
+                    >
+                      <h4 className="font-medium text-gray-30 text-sm truncate">
+                        {chat.name || "Untitled Chat"}
+                      </h4>
+                      <div className="flex items-center gap-1 text-xs text-accent-50 mt-1">
+                        <span className="bg-gray-70 px-2 py-0.5 rounded-full">
+                          {chat.aiModel}
+                        </span>
+                      </div>
+                      {chat.description && (
+                        <p className="text-xs text-gray-40 truncate mt-1">
+                          {chat.description}
+                        </p>
+                      )}
+                      <p className="text-xs text-gray-50 truncate mt-1">
+                        {chat.lastMessage}
+                      </p>
+                      <span className="text-xs text-gray-50 mt-1">
+                        {chat.timestamp
+                          ? formatDate(new Date(chat.timestamp))
+                          : "No messages yet"}
+                      </span>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-center text-gray-50 p-6 bg-gray-80 rounded-md">
+                  <p>No chats found</p>
+                  <p className="text-xs mt-2">
+                    Create a new chat to get started
+                  </p>
+                  <CustomButton
+                    className="mt-4 text-sm"
+                    onClick={() => setIsNewChatModalOpen(true)}
+                    startContent={<LuPlus className="w-4 h-4" />}
+                  >
+                    New Chat
+                  </CustomButton>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* User Profile and Logout */}
@@ -241,7 +393,16 @@ export default function ChatPage() {
                 <p className="text-sm font-medium text-gray-30">
                   {userData.username}
                 </p>
-                <p className="text-xs text-gray-50">{userData.email.content}</p>
+                <div className="flex items-center gap-1">
+                  <p className="text-xs text-gray-50">
+                    {userData.email.content}
+                  </p>
+                  {userData.email.isVerified ? (
+                    <span className="text-xs text-accent-50">✓</span>
+                  ) : (
+                    <span className="text-xs text-red-400">!</span>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -252,6 +413,11 @@ export default function ChatPage() {
               className="flex-1 border-accent-50 text-accent-50 hover:bg-accent-50 hover:text-white transition-colors"
               startContent={<LuLogOut className="w-4 h-4" />}
               fullWidth
+              onClick={() => {
+                localStorage.removeItem("token");
+                localStorage.removeItem("userData");
+                window.location.href = "/login";
+              }}
             >
               Logout
             </CustomButton>
@@ -263,21 +429,37 @@ export default function ChatPage() {
       <div className="flex-1 flex flex-col text-white">
         {/* Chat Header */}
         <div className="bg-gray-70 border-b-1 border-gray-50 p-4 flex items-center gap-3">
+          <button
+            className="md:hidden text-gray-30 hover:text-white transition-colors"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+          >
+            {sidebarOpen ? (
+              <LuX className="w-5 h-5" />
+            ) : (
+              <LuMenu className="w-5 h-5" />
+            )}
+          </button>
+
           <div className="flex items-center gap-3">
             {currentChat ? (
               <div>
                 <h2 className="font-medium">
-                  {currentChat?.name} - {currentChat?.aiModel}
+                  {currentChat?.name || "Untitled Chat"}
                 </h2>
-                <p className="text-xs text-accent-50">Online</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-accent-50">Online</span>
+                  <span className="text-xs bg-gray-60 px-2 py-0.5 rounded-full">
+                    {currentChat?.aiModel}
+                  </span>
+                </div>
               </div>
             ) : (
               <div>
                 <h2
-                  className="font-medium"
+                  className="font-medium cursor-pointer hover:text-primary-50 transition-colors"
                   onClick={() => setIsNewChatModalOpen(true)}
                 >
-                  Select a chat
+                  {isLoading ? "Loading chats..." : "Select or create a chat"}
                 </h2>
               </div>
             )}
@@ -286,66 +468,144 @@ export default function ChatPage() {
 
         {/* Messages Area */}
         <div className="flex-1 bg-gray-70 overflow-y-auto p-4 space-y-4">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${
-                message.sender === "user" ? "justify-end" : "justify-start"
-              }`}
-            >
-              <div
-                className={`flex gap-3 max-w-[70%] ${
-                  message.sender === "user" ? "flex-row-reverse" : ""
-                }`}
-              >
-                <Avatar
-                  className="w-8 h-8 flex-shrink-0"
-                  fallback={
-                    message.sender === "user" ? (
-                      <LuUser className="w-4 h-4" />
-                    ) : (
-                      <FaBrain className="w-4 h-4" />
-                    )
-                  }
-                />
-                <div
-                  className={`${
-                    message.sender === "user"
-                      ? "bg-gradient-to-r from-primary-60 to-primary-70 text-white"
-                      : "bg-gray-20 text-gray-90"
-                  } rounded-2xl px-4 py-3`}
-                >
-                  <p className="text-sm">{message.content}</p>
-                  <span
-                    className={`text-xs mt-1 block ${
+          {currentChat ? (
+            messages.length > 0 ? (
+              <>
+                {messages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`flex ${
                       message.sender === "user"
-                        ? "text-primary-10"
-                        : "text-gray-60"
+                        ? "justify-end"
+                        : "justify-start"
                     }`}
                   >
-                    {message.timestamp.toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
+                    <div
+                      className={`flex gap-3 max-w-[70%] ${
+                        message.sender === "user" ? "flex-row-reverse" : ""
+                      }`}
+                    >
+                      <Avatar
+                        className="w-8 h-8 flex-shrink-0"
+                        fallback={
+                          message.sender === "user" ? (
+                            <LuUser className="w-4 h-4" />
+                          ) : (
+                            <FaBrain className="w-4 h-4" />
+                          )
+                        }
+                      />
+                      <div
+                        className={`${
+                          message.sender === "user"
+                            ? "bg-gradient-to-r from-primary-60 to-primary-70 text-white"
+                            : "bg-gray-20 text-gray-90"
+                        } rounded-2xl px-4 py-3`}
+                      >
+                        <p className="text-sm whitespace-pre-wrap">
+                          {message.content}
+                        </p>
+                        <span
+                          className={`text-xs mt-1 block ${
+                            message.sender === "user"
+                              ? "text-primary-10"
+                              : "text-gray-60"
+                          }`}
+                        >
+                          {formatDate(new Date(message.timestamp))}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {isSendingMessage && (
+                  <div className="flex justify-start">
+                    <div className="flex gap-3">
+                      <Avatar
+                        className="w-8 h-8 flex-shrink-0"
+                        fallback={<FaBrain className="w-4 h-4" />}
+                      />
+                      <div className="bg-gray-20 text-gray-90 rounded-2xl px-4 py-3">
+                        <div className="flex space-x-2">
+                          <div
+                            className="w-2 h-2 bg-gray-60 rounded-full animate-bounce"
+                            style={{ animationDelay: "0ms" }}
+                          ></div>
+                          <div
+                            className="w-2 h-2 bg-gray-60 rounded-full animate-bounce"
+                            style={{ animationDelay: "300ms" }}
+                          ></div>
+                          <div
+                            className="w-2 h-2 bg-gray-60 rounded-full animate-bounce"
+                            style={{ animationDelay: "600ms" }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-primary-60 to-secondary-60 rounded-full flex items-center justify-center mb-4">
+                  <FaBrain className="w-8 h-8 text-white" />
                 </div>
+                <h3 className="text-xl font-medium mb-2">
+                  Start a conversation
+                </h3>
+                <p className="text-gray-40 max-w-md">
+                  Ask a question or start a conversation with the AI assistant.
+                </p>
               </div>
+            )
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-center">
+              <div className="w-16 h-16 bg-gradient-to-br from-primary-60 to-secondary-60 rounded-full flex items-center justify-center mb-4">
+                <LuScale className="w-8 h-8 text-white" />
+              </div>
+              <h3 className="text-xl font-medium mb-2">
+                Welcome to Legal Fusion AI
+              </h3>
+              <p className="text-gray-40 max-w-md">
+                {isLoading
+                  ? "Loading your chats..."
+                  : chats.length > 0
+                  ? "Select a chat from the sidebar or create a new one to get started."
+                  : "Create a new chat to start a conversation with the AI assistant."}
+              </p>
+              {!isLoading && chats.length === 0 && (
+                <CustomButton
+                  className="mt-4"
+                  onClick={() => setIsNewChatModalOpen(true)}
+                  startContent={<LuPlus className="w-4 h-4" />}
+                >
+                  New Chat
+                </CustomButton>
+              )}
             </div>
-          ))}
+          )}
         </div>
 
         {/* Message Input */}
         <div className="bg-gray-70 border-t-1 border-gray-50 p-4">
           <div className="flex gap-3 items-end">
             <CustomInput
-              placeholder="Type your message..."
+              placeholder={
+                currentChat
+                  ? "Type your message..."
+                  : "Select a chat to start messaging"
+              }
               value={currentMessage}
               onChange={(e) => setCurrentMessage(e.target.value)}
               onKeyPress={handleKeyPress}
+              disabled={!currentChat || isSendingMessage}
             />
             <CustomButton
               onClick={handleSendMessage}
-              disabled={!currentMessage.trim()}
+              disabled={
+                !currentMessage.trim() || !currentChat || isSendingMessage
+              }
               className="text-white w-fit"
               isIconOnly
             >
@@ -389,22 +649,34 @@ export default function ChatPage() {
                   onChange={(e) => setNewChatDescription(e.target.value)}
                 />
               </div>
+              {error && (
+                <div className="p-3 bg-red-900/20 border border-red-700 rounded-md text-red-400 text-sm">
+                  {error}
+                </div>
+              )}
             </div>
           </ModalBody>
           <ModalFooter className="border-t-1 border-gray-70">
             <CustomButton
               variant="bordered"
               className="border-gray-50 text-gray-40"
-              onClick={() => setIsNewChatModalOpen(false)}
+              onClick={() => {
+                setIsNewChatModalOpen(false);
+                setError(null);
+              }}
             >
               Cancel
             </CustomButton>
             <CustomButton
               className="bg-gradient-to-r from-primary-60 to-primary-70 text-white"
               onClick={handleCreateNewChat}
-              disabled={!newChatTitle.trim()}
+              disabled={!newChatTitle.trim() || isCreatingChat}
             >
-              Create Chat
+              {isCreatingChat ? (
+                <Spinner size="sm" color="white" />
+              ) : (
+                "Create Chat"
+              )}
             </CustomButton>
           </ModalFooter>
         </ModalContent>
