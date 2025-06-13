@@ -36,7 +36,7 @@ const RegisterPage = () => {
       const signupRes = await signup(data);
       if (signupRes.error) {
         if (signupRes.error.code === "ALREADY_EXISTS") {
-          setError("This username or email already exists");
+          setError("This email already exists"); // only the email is unique
         } else {
           setError(signupRes.message);
         }
