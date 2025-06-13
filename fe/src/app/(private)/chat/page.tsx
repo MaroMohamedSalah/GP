@@ -345,14 +345,6 @@ export default function ChatPage() {
                           {chat.aiModel}
                         </span>
                       </div>
-                      {chat.description && (
-                        <p className="text-xs text-gray-40 truncate mt-1">
-                          {chat.description}
-                        </p>
-                      )}
-                      <p className="text-xs text-gray-50 truncate mt-1">
-                        {chat.lastMessage}
-                      </p>
                       <span className="text-xs text-gray-50 mt-1">
                         {chat.timestamp
                           ? formatDate(new Date(chat.timestamp))
