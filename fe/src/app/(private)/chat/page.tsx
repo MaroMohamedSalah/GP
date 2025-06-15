@@ -19,7 +19,7 @@ import {
 import { useRouter } from "next/navigation";
 import type React from "react";
 
-import { useEffect, useState, useRef, use } from "react";
+import { useEffect, useState, useRef } from "react";
 import { FaBrain } from "react-icons/fa";
 import { IoAlertCircleOutline } from "react-icons/io5";
 import {
@@ -69,7 +69,7 @@ export default function ChatPage() {
   const [currentMessage, setCurrentMessage] = useState("");
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
   const [newChatTitle, setNewChatTitle] = useState("");
-  const [newChatDescription, setNewChatDescription] = useState("");
+  // const [newChatDescription, setNewChatDescription] = useState("");
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [chats, setChats] = useState<Chat[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -160,6 +160,7 @@ export default function ChatPage() {
         return `<h${level} class="text-${size}xl">${content}</h${level}>`;
       }); 
 
+      // eslint-disable-next-line prefer-const
       let [thinking, ...rest] = message.split('</think>')
 
       // put thinking variable in a blockquote
@@ -186,6 +187,7 @@ export default function ChatPage() {
     return message;
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (currentChatId) {
       const chat = chats.find((chat) => chat._id === currentChatId);
@@ -434,7 +436,7 @@ export default function ChatPage() {
       setChats([...chats , enhancedChat]);
       setCurrentChatId(enhancedChat._id);
       setNewChatTitle("");
-      setNewChatDescription("");
+      // setNewChatDescription("");
       setIsNewChatModalOpen(false);
     } catch {
       setError("Failed to create new chat");
@@ -573,7 +575,7 @@ export default function ChatPage() {
           ) : (
             <div className="space-y-2">
               {chats.length > 0 ? (
-                chats.toReversed().map((chat, index) => {
+                chats.toReversed().map((chat) => {
                   return (
                     <div
                       key={chat._id}

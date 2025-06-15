@@ -3,7 +3,6 @@ import { login } from "@/app/actions/login";
 import CustomButton from "@/app/components/atoms/button";
 import CustomInput from "@/app/components/atoms/input";
 import AuthFormContainer from "@/app/components/molecules/authFormContainer";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { SubmitHandler, useForm } from "react-hook-form";
