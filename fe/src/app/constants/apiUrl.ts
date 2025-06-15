@@ -1,2 +1,2 @@
 export const API_URL =
-  "http://127.0.0.1:6060/api/v1";
+  "https://backend-legal-fusion-ai-fcai-graduation.onrender.com/api/v1";
