@@ -429,11 +429,12 @@ export default function ChatPage() {
         name: newChatTitle,
         messages: [],
         agent: {
-          name: agent,
+          name: localStorage?.getItem('aiModel'),
         }
       };
 
       setChats([...chats , enhancedChat]);
+      setAgent(localStorage?.getItem('aiModel') || agent);
       setCurrentChatId(enhancedChat._id);
       setNewChatTitle("");
       // setNewChatDescription("");
