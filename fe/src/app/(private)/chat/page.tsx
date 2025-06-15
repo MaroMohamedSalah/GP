@@ -1,6 +1,7 @@
 "use client";
 
 import { getAllChats } from "@/app/actions/getAllChats";
+import { sendMessage } from "@/app/actions/sendMessage";
 import { startNewChat } from "@/app/actions/startNewChat";
 import CustomButton from "@/app/components/atoms/button";
 import CustomInput from "@/app/components/atoms/input";
@@ -18,7 +19,7 @@ import {
 import { useRouter } from "next/navigation";
 import type React from "react";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, use } from "react";
 import { FaBrain } from "react-icons/fa";
 import { IoAlertCircleOutline } from "react-icons/io5";
 import {
@@ -42,10 +43,12 @@ interface User {
 }
 
 interface Message {
-  id: string;
+  _id: string;
   content: string;
-  sender: "user" | "assistant";
-  timestamp: Date;
+  role: "user" | "assistant";
+  createdAt: Date;
+  isLoading?: boolean; // Optional for loading state
+  isError?: boolean; // Optional for error state
 }
 
 interface Chat {
@@ -53,10 +56,14 @@ interface Chat {
   name: string;
   description?: string;
   lastMessage: string;
-  timestamp: Date;
+  createdAt: Date;
   messages: Message[];
-  aiModel: string;
+  agent: {
+    name: string;
+  }
 }
+
+
 
 export default function ChatPage() {
   const [currentMessage, setCurrentMessage] = useState("");
@@ -71,6 +78,8 @@ export default function ChatPage() {
   const [error, setError] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [agent, setAgent] = useState<string>("");
 
   const router = useRouter();
 
@@ -78,33 +87,180 @@ export default function ChatPage() {
     typeof window !== "undefined"
       ? (JSON.parse(localStorage.getItem("userData") || "null") as User | null)
       : null;
-  const agent =
-    typeof window !== "undefined"
-      ? localStorage.getItem("aiModel") ?? "LegalQwen3-7B"
-      : "LegalQwen3-7B";
+  // const agent =
+  //   typeof window !== "undefined"
+  //     ? localStorage.getItem("aiModel") ?? "LegalQwen3-7B"
+  //     : "LegalQwen3-7B";
   const token =
     typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   // Get current chat messages
   const currentChat =
     chats.find((chat) => chat._id === currentChatId) || chats[0];
-  const messages = currentChat?.messages || [];
+  // const messages = currentChat?.messages || [];
 
   // Scroll to bottom of messages
+
+  
+  function transformMessageContent( content: string, role: string = 'user', model = agent): string {
+    let message = content;
+    if(role === 'user') return message;
+    console.log("test")
+    if (model === "LegalQwen3-7B") {
+      message = content
+        .replaceAll('\\np', '\n')
+        .replaceAll('\\n p', '\n')
+        .replaceAll('\\n', '\n')
+        .replace(/ol(\s)/g, '')
+        .replaceAll('/li', '')
+        .replace(/lip(?!\s)/g, '')
+        .replace(/hr(\s)/g, '')
+        .replace(/start\d+/g, '')
+        .replaceAll('br />', '')
+        .replaceAll('/div', '')
+        .replaceAll('/dd', '')
+        .replaceAll('/dp', '')
+        .replaceAll('/>', '')
+        .replaceAll('\\g', '\g')
+        .replaceAll('li', '')
+        .replaceAll('ul', '')
+        .replaceAll('/p', '')
+        .replaceAll('/strong', '</b>')
+        .replace(/strong(?!\s)/g, '<b>')
+        .replaceAll('/a', ']')
+        .replaceAll('/s', '')
+        .replaceAll('\\s', '\s')
+        .replaceAll('\\t', '\t')
+        .replaceAll('quot;', '')
+        .replaceAll('amp;', '')
+        .replaceAll(';', '; ')
+        .replaceAll('/blockquote', '</b>')
+        .replaceAll('blockquote', '<b class="p-4 rounded-md">')
+        .replaceAll('a href', '[')
+        .replaceAll('A href', '[')
+        .replaceAll('body: p', '')
+        .replaceAll('body:', '')
+        .replaceAll('start[', '[')
+        .replace(/em(.*?)\/em/g, '<em>$1</em>')
+        .replace(/h([1-6])(.*?)\/h\1/g, (_, level, content) => {
+          const size = parseInt(level);
+          return `<h${level} class="text-${size}xl">${content}</h${level}>`;
+        })
+        .replace(/\/(\s)/g, '')
+        .replace(/answerid:\s*\d+,\s*score:\s*\d+,?/gi, '');
+    }
+    if(model == "LegalDeepseek-R1-8B"){
+      message = message
+      .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>') 
+      .replace(/__(.*?)__/g, '<b>$1</b>')
+      .replace(/^#{1,6}\s*(.+)$/gm, (match) => {
+        const level = match?.match(/^#+/)?.[0]?.length; 
+        const content = match.replace(/^#+\s*/, ''); 
+        const size = level;
+        return `<h${level} class="text-${size}xl">${content}</h${level}>`;
+      }); 
+
+      let [thinking, ...rest] = message.split('</think>')
+
+      // put thinking variable in a blockquote
+      thinking = `<i><blockquote class="p-4 rounded-md bg-gray-800 text-gray-200"><b>thinking...</b><br/>${thinking}
+      </blockquote></i>`;
+      message = [thinking, ...rest].join('')
+    }
+    if(model == "LegalDeepseek-R1-8B (summarization)"){
+      message = message?.split('### OUTPUT:\n')?.[1] || message;
+      message = message.replace(/(?:\s\d+)+\s*$/, '');
+      message = message.replace(/(?:\d+;?)+\s*$/, '');
+      // console.log("starting")
+      message = message.replace(/(?:\d+;\s*)+$/, '');
+      // console.log("ending")
+    }
+    console.log(model, model === 'LegalDeepseek-R1-8B (classification)')
+    if(model == "LegalDeepseek-R1-8B (classification)"){
+      console.log("test")
+      message = message?.split('<｜Assistant｜>')?.[1] || message;
+      message = message.replace(/:\/\/.*?\s/, '');
+    }
+
+
+    return message;
+  }
+
+  useEffect(() => {
+    if (currentChatId) {
+      const chat = chats.find((chat) => chat._id === currentChatId);
+      if (chat) {
+        setAgent(chat.agent.name);
+        setMessages(chat.messages.map((msg) => {
+          return {
+            ...msg,
+            content: transformMessageContent(msg.content, msg.role, chat.agent.name),
+          };
+        }));
+      } else {
+        setMessages([]);
+      }
+    } else {
+      setMessages([]);
+    }
+  }, [currentChatId]);
+
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
 
+  const replaceMessageContent = (messageId: string, content: string) => {
+    setChats((prevChats) =>
+      prevChats.map((chat) => {
+        if (chat._id === currentChatId) {
+          return {
+            ...chat,
+            messages: chat.messages.map((msg) =>
+              msg._id === messageId ? { ...msg, content: transformMessageContent(content, msg.role) } : msg
+            ),
+          };
+        }
+        return chat;
+      })
+    );
+    setMessages((prevMessages) =>
+      prevMessages.map((msg) =>
+        msg._id === messageId ? { ...msg, content: transformMessageContent(content, msg.role) } : msg
+      )
+    );
+  }
+
+  const deleteMessageLoadingState = (messageId: string) => {
+    setChats((prevChats) =>
+      prevChats.map((chat) => {
+        if (chat._id === currentChatId) {
+          return {
+            ...chat,
+            messages: chat.messages.map((msg) =>
+              msg._id === messageId ? { ...msg, isLoading: false } : msg
+            ),
+          };
+        }
+        return chat;
+      })
+    );
+    setMessages((prevMessages) =>
+      prevMessages.map((msg) =>
+        msg._id === messageId ? { ...msg, isLoading: false } : msg
+      )
+    );
+  }
+
   const handleSendMessage = async () => {
-    if (!currentMessage.trim() || !currentChat) return;
+    if (!currentMessage.trim() || !currentChat || !currentChatId) return;
 
     const newMessage: Message = {
-      id: Date.now().toString(),
+      _id: Date.now().toString(),
       content: currentMessage,
-      sender: "user",
-      timestamp: new Date(),
+      role: "user",
+      createdAt: new Date(),
     };
 
     // Update the current chat's messages and last message
@@ -112,7 +268,7 @@ export default function ChatPage() {
       if (chat._id === currentChatId) {
         return {
           ...chat,
-          messages: [...chat.messages, newMessage],
+          messages: [...(chat?.messages || []), newMessage],
           lastMessage: newMessage.content,
           timestamp: new Date(),
         };
@@ -121,26 +277,31 @@ export default function ChatPage() {
     });
 
     setChats(updatedChats);
+    setMessages((prevMessages) => [...prevMessages, newMessage]);
     setCurrentMessage("");
     setIsSendingMessage(true);
 
     try {
       // Here you would add the API call to send the message
       // For now, we'll simulate a response
-      setTimeout(() => {
-        const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          content: "I understand your message. How can I assist you further?",
-          sender: "assistant",
-          timestamp: new Date(),
-        };
 
+      const res = await sendMessage(currentChatId, currentMessage);
+
+      if(!res.ok || !res.body) {
+        const errorData = await res.json();
+        const assistantMessage: Message = {
+            _id: (Date.now() + 1000*Math.random()).toString(),
+            content: errorData?.error?.message || "Failed to send message",
+            role: "assistant",
+            createdAt: new Date(),
+            isError: true,
+        };
         setChats((prevChats) =>
           prevChats.map((chat) => {
             if (chat._id === currentChatId) {
               return {
                 ...chat,
-                messages: [...chat.messages, assistantMessage],
+                messages: [...(chat?.messages || []), assistantMessage],
                 lastMessage: assistantMessage.content,
                 timestamp: new Date(),
               };
@@ -148,8 +309,89 @@ export default function ChatPage() {
             return chat;
           })
         );
+        setMessages((prevMessages) => [...prevMessages, assistantMessage]);
+        setCurrentMessage("");
         setIsSendingMessage(false);
-      }, 1000);
+        return;
+      }
+
+      const assistantMessage: Message = {
+            _id: (Date.now() + 1000*Math.random()).toString(),
+            content: "",
+            role: "assistant",
+            createdAt: new Date(),
+            isLoading: true, // Set loading state to true initially
+      };
+
+      setChats((prevChats) =>
+          prevChats.map((chat) => {
+            if (chat._id === currentChatId) {
+              return {
+                ...chat,
+                messages: [...(chat?.messages || []), assistantMessage],
+                lastMessage: assistantMessage.content,
+                timestamp: new Date(),
+              };
+            }
+            return chat;
+          })
+        );
+      setMessages((prevMessages) => [...prevMessages, assistantMessage]);
+      setCurrentMessage("");
+      setIsSendingMessage(false);
+
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let buffer = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          break;
+        }
+        buffer += decoder.decode(value, { stream: true });
+        replaceMessageContent(assistantMessage._id, buffer);
+      }
+
+      deleteMessageLoadingState(assistantMessage._id);
+      // setTimeout(() => {
+          // const assistantMessage: Message = {
+          //   _id: (Date.now() + 1000*Math.random()).toString(),
+          //   content: "",
+          //   role: "assistant",
+          //   createdAt: new Date(),
+          //   isLoading: true,
+          // };
+
+      //     setChats((prevChats) =>
+      //       prevChats.map((chat) => {
+      //         if (chat._id === currentChatId) {
+      //           return {
+      //             ...chat,
+      //             messages: [...(chat?.messages || []), assistantMessage],
+      //             lastMessage: assistantMessage.content,
+      //             timestamp: new Date(),
+      //           };
+      //         }
+      //         return chat;
+      //       })
+      //     );
+      //     setMessages((prevMessages) => [...prevMessages, assistantMessage]);
+      //     setIsSendingMessage(false);
+
+
+      //     const words = ["hi", "i", "am", "an", "ai", "assistant"];
+      //     let i = 0;
+      //     const interval = setInterval(() => {
+      //       if (i < words.length) {
+      //         appendMessageTokens(assistantMessage._id, words[i] + " ");
+      //         i++;
+      //       } else {
+      //         clearInterval(interval);
+      //         deleteMessageLoadingState(assistantMessage._id);
+      //       }
+      //     }, 500);
+      // }, 1000);
     } catch {
       setError("Failed to send message. Please try again.");
       setIsSendingMessage(false);
@@ -170,7 +412,9 @@ export default function ChatPage() {
     setError(null);
 
     try {
-      const newChat = await startNewChat(agent);
+      const newChat = await startNewChat(agent,
+        newChatTitle.trim(),
+      );
 
       if (newChat.error) {
         throw new Error(newChat.error);
@@ -180,11 +424,14 @@ export default function ChatPage() {
       // In a real app, you would send this to the API
       const enhancedChat = {
         ...newChat.data,
-        name: newChatTitle + " - " + agent,
-        description: newChatDescription,
+        name: newChatTitle,
+        messages: [],
+        agent: {
+          name: agent,
+        }
       };
 
-      setChats([enhancedChat, ...chats]);
+      setChats([...chats , enhancedChat]);
       setCurrentChatId(enhancedChat._id);
       setNewChatTitle("");
       setNewChatDescription("");
@@ -326,8 +573,7 @@ export default function ChatPage() {
           ) : (
             <div className="space-y-2">
               {chats.length > 0 ? (
-                chats.map((chat, index) => {
-                  if (!chat.messages && index !== 0) return null;
+                chats.toReversed().map((chat, index) => {
                   return (
                     <div
                       key={chat._id}
@@ -343,20 +589,12 @@ export default function ChatPage() {
                       </h4>
                       <div className="flex items-center gap-1 text-xs text-accent-50 mt-1">
                         <span className="bg-gray-70 px-2 py-0.5 rounded-full">
-                          {chat.aiModel}
+                          {chat?.agent?.name}
                         </span>
                       </div>
-                      {chat.description && (
-                        <p className="text-xs text-gray-40 truncate mt-1">
-                          {chat.description}
-                        </p>
-                      )}
-                      <p className="text-xs text-gray-50 truncate mt-1">
-                        {chat.lastMessage}
-                      </p>
                       <span className="text-xs text-gray-50 mt-1">
-                        {chat.timestamp
-                          ? formatDate(new Date(chat.timestamp))
+                        {chat.createdAt
+                          ? formatDate(new Date(chat.createdAt))
                           : "No messages yet"}
                       </span>
                     </div>
@@ -449,7 +687,7 @@ export default function ChatPage() {
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-accent-50">Online</span>
                   <span className="text-xs bg-gray-60 px-2 py-0.5 rounded-full">
-                    {currentChat?.aiModel}
+                    {currentChat?.agent?.name}
                   </span>
                 </div>
               </div>
@@ -473,22 +711,22 @@ export default function ChatPage() {
               <>
                 {messages.map((message) => (
                   <div
-                    key={message.id}
+                    key={message._id}
                     className={`flex ${
-                      message.sender === "user"
+                      message.role === "user"
                         ? "justify-end"
                         : "justify-start"
-                    }`}
+                    } ${message.isLoading ? "opacity-50" : ""} ${message.isError ? "bg-red-900/20 opacity-50" : ""}`}
                   >
                     <div
                       className={`flex gap-3 max-w-[70%] ${
-                        message.sender === "user" ? "flex-row-reverse" : ""
+                        message.role === "user" ? "flex-row-reverse" : ""
                       }`}
                     >
                       <Avatar
                         className="w-8 h-8 flex-shrink-0"
                         fallback={
-                          message.sender === "user" ? (
+                          message.role === "user" ? (
                             <LuUser className="w-4 h-4" />
                           ) : (
                             <FaBrain className="w-4 h-4" />
@@ -497,22 +735,23 @@ export default function ChatPage() {
                       />
                       <div
                         className={`${
-                          message.sender === "user"
+                          message.role === "user"
                             ? "bg-gradient-to-r from-primary-60 to-primary-70 text-white"
                             : "bg-gray-20 text-gray-90"
                         } rounded-2xl px-4 py-3`}
                       >
-                        <p className="text-sm whitespace-pre-wrap">
-                          {message.content}
-                        </p>
+                        <div className="text-sm whitespace-pre-wrap" style={{whiteSpace: "pre-wrap"}}   dangerouslySetInnerHTML={{ __html: message.content }}
+>
+                          {/* {message.content} */}
+                        </div>
                         <span
                           className={`text-xs mt-1 block ${
-                            message.sender === "user"
+                            message.role === "user"
                               ? "text-primary-10"
                               : "text-gray-60"
                           }`}
                         >
-                          {formatDate(new Date(message.timestamp))}
+                          {formatDate(new Date(message.createdAt))}
                         </span>
                       </div>
                     </div>
@@ -639,16 +878,20 @@ export default function ChatPage() {
                   onChange={(e) => setNewChatTitle(e.target.value)}
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Description (Optional)
-                </label>
-                <CustomInput
-                  placeholder="Enter chat description"
-                  value={newChatDescription}
-                  onChange={(e) => setNewChatDescription(e.target.value)}
-                />
-              </div>
+              {
+                /*
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Description (Optional)
+                  </label>
+                  <CustomInput
+                    placeholder="Enter chat description"
+                    value={newChatDescription}
+                    onChange={(e) => setNewChatDescription(e.target.value)}
+                  />
+                </div>
+                */
+              }
               {error && (
                 <div className="p-3 bg-red-900/20 border border-red-700 rounded-md text-red-400 text-sm">
                   {error}

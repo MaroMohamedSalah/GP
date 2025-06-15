@@ -84,13 +84,6 @@ export default function LoginPage() {
           />
           <span className="text-sm text-gray-70">Remember me</span>
         </label>
-
-        <Link
-          href="#"
-          className="text-sm text-primary-60 hover:text-primary-70"
-        >
-          Forgot password?
-        </Link>
       </div>
     </AuthFormContainer>
   );
