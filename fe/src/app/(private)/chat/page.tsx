@@ -414,7 +414,7 @@ export default function ChatPage() {
     setError(null);
 
     try {
-      const newChat = await startNewChat(agent,
+      const newChat = await startNewChat(localStorage?.getItem('aiModel') || agent,
         newChatTitle.trim(),
       );
 
